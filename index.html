@@ -81,6 +81,33 @@
         .hidden {
             display: none;
         }
+        .autocomplete {
+            position: relative;
+            display: inline-block;
+        }
+        .autocomplete-items {
+            position: absolute;
+            border: 1px solid #d4d4d4;
+            border-bottom: none;
+            border-top: none;
+            z-index: 99;
+            top: 100%;
+            left: 0;
+            right: 0;
+        }
+        .autocomplete-items div {
+            padding: 10px;
+            cursor: pointer;
+            background-color: #fff; 
+            border-bottom: 1px solid #d4d4d4; 
+        }
+        .autocomplete-items div:hover {
+            background-color: #e9e9e9; 
+        }
+        .autocomplete-active {
+            background-color: DodgerBlue !important; 
+            color: #ffffff; 
+        }
     </style>
 </head>
 <body>
@@ -120,7 +147,7 @@
     // Initialize data structure
     let familyMembers = [];
     let meals = [];
-    let mealPlan = {breakfast: '', lunch: '', dinner: '', snacks: []};
+    let mealPlan = {breakfast: [], lunch: [], dinner: [], snacks: []};
 
     // Load data from localStorage
     function loadData() {
@@ -143,23 +170,36 @@
         localStorage.setItem('mealPlan', JSON.stringify(mealPlan));
     }
 
+    // Calculate age from date of birth
+    function calculateAge(dob) {
+        const today = new Date();
+        const birthDate = new Date(dob);
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age;
+    }
+
     // Render family members
     function renderFamilyMembers() {
         const familyMembersDiv = document.getElementById('familyMembers');
         familyMembersDiv.innerHTML = '';
         familyMembers.forEach((member, index) => {
+            const age = calculateAge(member.dob);
             const memberDiv = document.createElement('div');
             memberDiv.className = 'family-member';
             memberDiv.innerHTML = `
                 <h3>${member.name}</h3>
-                <p>Age: ${member.age} | Diet: ${member.diet} | Daily Calorie Target: ${member.calories}</p>
-                <p>Diet Plan: ${member.dietPlan ? 'Uploaded' : 'Not uploaded'}</p>
+                <p>Age: ${age} | Diet: ${member.diet} | Daily Calorie Target: ${member.calories}</p>
+                <p>Diet Plan: ${member.dietPlan ? 'Set' : 'Not set'}</p>
                 <div class="progress-bar">
                     <span class="progress-bar-fill" style="width: ${member.progress}%;">${member.progress}%</span>
                 </div>
                 <button class="edit-button" onclick="editFamilyMember(${index})">Edit</button>
                 <button class="delete-button" onclick="deleteFamilyMember(${index})">Delete</button>
-                <button class="button" onclick="uploadDietPlan(${index})">Upload Diet Plan</button>
+                <button class="button" onclick="updateDietPlan(${index})">Update Diet Plan</button>
             `;
             familyMembersDiv.appendChild(memberDiv);
         });
@@ -168,12 +208,13 @@
     // Add family member
     function addFamilyMember() {
         const name = prompt("Enter family member's name:");
-        const age = prompt("Enter family member's age:");
+        const dob = prompt("Enter date of birth (YYYY-MM-DD):");
         const diet = prompt("Enter diet type:");
         const calories = prompt("Enter daily calorie target:");
+        const dietPlan = prompt("Enter diet plan details (optional):");
 
-        if (name && age && diet && calories) {
-            familyMembers.push({name, age, diet, calories, progress: 0, dietPlan: null});
+        if (name && dob && diet && calories) {
+            familyMembers.push({name, dob, diet, calories, progress: 0, dietPlan: dietPlan || null});
             saveData();
             renderFamilyMembers();
         }
@@ -183,12 +224,13 @@
     function editFamilyMember(index) {
         const member = familyMembers[index];
         const name = prompt("Enter family member's name:", member.name);
-        const age = prompt("Enter family member's age:", member.age);
+        const dob = prompt("Enter date of birth (YYYY-MM-DD):", member.dob);
         const diet = prompt("Enter diet type:", member.diet);
         const calories = prompt("Enter daily calorie target:", member.calories);
+        const dietPlan = prompt("Enter diet plan details (optional):", member.dietPlan);
 
-        if (name && age && diet && calories) {
-            familyMembers[index] = {...member, name, age, diet, calories};
+        if (name && dob && diet && calories) {
+            familyMembers[index] = {...member, name, dob, diet, calories, dietPlan: dietPlan || null};
             saveData();
             renderFamilyMembers();
         }
@@ -201,10 +243,10 @@
         renderFamilyMembers();
     }
 
-    // Upload diet plan
-    function uploadDietPlan(index) {
-        const dietPlan = prompt("Enter diet plan details:");
-        if (dietPlan) {
+    // Update diet plan
+    function updateDietPlan(index) {
+        const dietPlan = prompt("Enter updated diet plan details:", familyMembers[index].dietPlan);
+        if (dietPlan !== null) {
             familyMembers[index].dietPlan = dietPlan;
             saveData();
             renderFamilyMembers();
@@ -215,18 +257,18 @@
     function renderMealPlan() {
         const mealPlanDiv = document.getElementById('mealPlan');
         mealPlanDiv.innerHTML = `
-            <p>Breakfast: ${mealPlan.breakfast} <button onclick="editMeal('breakfast')">Edit</button></p>
-            <p>Lunch: ${mealPlan.lunch} <button onclick="editMeal('lunch')">Edit</button></p>
-            <p>Dinner: ${mealPlan.dinner} <button onclick="editMeal('dinner')">Edit</button></p>
-            <p>Snacks: ${mealPlan.snacks.join(', ')} <button onclick="editSnacks()">Edit</button></p>
+            <p>Breakfast: ${mealPlan.breakfast.join(', ')} <button onclick="editMeal('breakfast')">Edit</button></p>
+            <p>Lunch: ${mealPlan.lunch.join(', ')} <button onclick="editMeal('lunch')">Edit</button></p>
+            <p>Dinner: ${mealPlan.dinner.join(', ')} <button onclick="editMeal('dinner')">Edit</button></p>
+            <p>Snacks: ${mealPlan.snacks.join(', ')} <button onclick="editMeal('snacks')">Edit</button></p>
         `;
     }
 
     // Plan meal
     function planMeal(mealType) {
-        const meal = prompt(`Enter ${mealType}:`);
+        const meal = promptWithAutocomplete(`Enter ${mealType}:`, meals.map(m => m.name));
         if (meal) {
-            mealPlan[mealType] = meal;
+            mealPlan[mealType].push(meal);
             saveData();
             renderMealPlan();
         }
@@ -234,29 +276,9 @@
 
     // Edit meal
     function editMeal(mealType) {
-        const meal = prompt(`Edit ${mealType}:`, mealPlan[mealType]);
-        if (meal) {
-            mealPlan[mealType] = meal;
-            saveData();
-            renderMealPlan();
-        }
-    }
-
-    // Edit snacks
-    function editSnacks() {
-        const snacks = prompt("Edit snacks (comma-separated):", mealPlan.snacks.join(', '));
-        if (snacks) {
-            mealPlan.snacks = snacks.split(',').map(s => s.trim());
-            saveData();
-            renderMealPlan();
-        }
-    }
-
-    // Add snack
-    function addSnack() {
-        const snack = prompt("Enter snack:");
-        if (snack) {
-            mealPlan.snacks.push(snack);
+        const meals = prompt(`Edit ${mealType} (comma-separated):`, mealPlan[mealType].join(', '));
+        if (meals) {
+            mealPlan[mealType] = meals.split(',').map(m => m.trim());
             saveData();
             renderMealPlan();
         }
@@ -267,7 +289,12 @@
         const mealDatabaseDiv = document.getElementById('mealDatabase');
         mealDatabaseDiv.innerHTML = '<h3>All Dishes</h3>';
         meals.forEach(meal => {
-            mealDatabaseDiv.innerHTML += `<p>${meal.name} - ${meal.calories} calories</p>`;
+            mealDatabaseDiv.innerHTML += `
+                <p>${meal.name} - Calories: ${meal.calories}, 
+                   Protein: ${meal.protein}g, 
+                   Carbs: ${meal.carbs}g, 
+                   Fat: ${meal.fat}g</p>
+            `;
         });
         mealDatabaseDiv.classList.remove('hidden');
     }
@@ -276,8 +303,11 @@
     function addNewDish() {
         const name = prompt("Enter dish name:");
         const calories = prompt("Enter calorie count:");
-        if (name && calories) {
-            meals.push({name, calories});
+        const protein = prompt("Enter protein content (g):");
+        const carbs = prompt("Enter carbohydrate content (g):");
+        const fat = prompt("Enter fat content (g):");
+        if (name && calories && protein && carbs && fat) {
+            meals.push({name, calories, protein, carbs, fat});
             saveData();
             alert("Dish added successfully!");
         }
@@ -305,18 +335,45 @@
         }
     }
 
-    // Event listeners
-    document.getElementById('addFamilyMember').addEventListener('click', addFamilyMember);
-    document.getElementById('planBreakfast').addEventListener('click', () => planMeal('breakfast'));
-    document.getElementById('planLunch').addEventListener('click', () => planMeal('lunch'));
-    document.getElementById('planDinner').addEventListener('click', () => planMeal('dinner'));
-    document.getElementById('addSnack').addEventListener('click', addSnack);
-    document.getElementById('viewAllDishes').addEventListener('click', viewAllDishes);
-    document.getElementById('addNewDish').addEventListener('click', addNewDish);
-    document.getElementById('getMealSuggestions').addEventListener('click', getMealSuggestions);
-
-    // Load data on page load
-    loadData();
-    </script>
-</body>
-</html>
+    // Autocomplete function
+    function autocomplete(inp, arr) {
+        var currentFocus;
+        inp.addEventListener("input", function(e) {
+            var a, b, i, val = this.value;
+            closeAllLists();
+            if (!val) { return false;}
+            currentFocus = -1;
+            a = document.createElement("DIV");
+            a.setAttribute("id", this.id + "autocomplete-list");
+            a.setAttribute("class", "autocomplete-items");
+            this.parentNode.appendChild(a);
+            for (i = 0; i < arr.length; i++) {
+                if (arr[i].substr(0, val.length).toUpperCase() == val.toUpperCase()) {
+                    b = document.createElement("DIV");
+                    b.innerHTML = "<strong>" + arr[i].substr(0, val.length) + "</strong>";
+                    b.innerHTML += arr[i].substr(val.length);
+                    b.innerHTML += "<input type='hidden' value='" + arr[i] + "'>";
+                    b.addEventListener("click", function(e) {
+                        inp.value = this.getElementsByTagName("input")[0].value;
+                        closeAllLists();
+                    });
+                    a.appendChild(b);
+                }
+            }
+        });
+        inp.addEventListener("keydown", function(e) {
+            var x = document.getElementById(this.id + "autocomplete-list");
+            if (x) x = x.getElementsByTagName("div");
+            if (e.keyCode == 40) {
+                currentFocus++;
+                addActive(x);
+            } else if (e.keyCode == 38) {
+                currentFocus--;
+                addActive(x);
+            } else if (e.keyCode == 13) {
+                e.preventDefault();
+                if (currentFocus > -1) {
+                    if (x) x[currentFocus].click();
+                }
+            }
+        });
