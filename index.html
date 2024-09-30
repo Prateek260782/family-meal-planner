@@ -63,13 +63,17 @@
             border-radius: 3px;
             transition: width 500ms ease-in-out;
         }
-        .delete-button {
+        .delete-button, .edit-button {
             background: #ff4d4d;
             color: white;
             border: none;
             padding: 5px 10px;
             border-radius: 3px;
             cursor: pointer;
+            margin-right: 5px;
+        }
+        .edit-button {
+            background: #4d79ff;
         }
         .meal-plan, .meal-database {
             margin-top: 10px;
@@ -149,10 +153,13 @@
             memberDiv.innerHTML = `
                 <h3>${member.name}</h3>
                 <p>Age: ${member.age} | Diet: ${member.diet} | Daily Calorie Target: ${member.calories}</p>
+                <p>Diet Plan: ${member.dietPlan ? 'Uploaded' : 'Not uploaded'}</p>
                 <div class="progress-bar">
                     <span class="progress-bar-fill" style="width: ${member.progress}%;">${member.progress}%</span>
                 </div>
+                <button class="edit-button" onclick="editFamilyMember(${index})">Edit</button>
                 <button class="delete-button" onclick="deleteFamilyMember(${index})">Delete</button>
+                <button class="button" onclick="uploadDietPlan(${index})">Upload Diet Plan</button>
             `;
             familyMembersDiv.appendChild(memberDiv);
         });
@@ -166,7 +173,22 @@
         const calories = prompt("Enter daily calorie target:");
 
         if (name && age && diet && calories) {
-            familyMembers.push({name, age, diet, calories, progress: 0});
+            familyMembers.push({name, age, diet, calories, progress: 0, dietPlan: null});
+            saveData();
+            renderFamilyMembers();
+        }
+    }
+
+    // Edit family member
+    function editFamilyMember(index) {
+        const member = familyMembers[index];
+        const name = prompt("Enter family member's name:", member.name);
+        const age = prompt("Enter family member's age:", member.age);
+        const diet = prompt("Enter diet type:", member.diet);
+        const calories = prompt("Enter daily calorie target:", member.calories);
+
+        if (name && age && diet && calories) {
+            familyMembers[index] = {...member, name, age, diet, calories};
             saveData();
             renderFamilyMembers();
         }
@@ -179,14 +201,24 @@
         renderFamilyMembers();
     }
 
+    // Upload diet plan
+    function uploadDietPlan(index) {
+        const dietPlan = prompt("Enter diet plan details:");
+        if (dietPlan) {
+            familyMembers[index].dietPlan = dietPlan;
+            saveData();
+            renderFamilyMembers();
+        }
+    }
+
     // Render meal plan
     function renderMealPlan() {
         const mealPlanDiv = document.getElementById('mealPlan');
         mealPlanDiv.innerHTML = `
-            <p>Breakfast: ${mealPlan.breakfast}</p>
-            <p>Lunch: ${mealPlan.lunch}</p>
-            <p>Dinner: ${mealPlan.dinner}</p>
-            <p>Snacks: ${mealPlan.snacks.join(', ')}</p>
+            <p>Breakfast: ${mealPlan.breakfast} <button onclick="editMeal('breakfast')">Edit</button></p>
+            <p>Lunch: ${mealPlan.lunch} <button onclick="editMeal('lunch')">Edit</button></p>
+            <p>Dinner: ${mealPlan.dinner} <button onclick="editMeal('dinner')">Edit</button></p>
+            <p>Snacks: ${mealPlan.snacks.join(', ')} <button onclick="editSnacks()">Edit</button></p>
         `;
     }
 
@@ -195,6 +227,26 @@
         const meal = prompt(`Enter ${mealType}:`);
         if (meal) {
             mealPlan[mealType] = meal;
+            saveData();
+            renderMealPlan();
+        }
+    }
+
+    // Edit meal
+    function editMeal(mealType) {
+        const meal = prompt(`Edit ${mealType}:`, mealPlan[mealType]);
+        if (meal) {
+            mealPlan[mealType] = meal;
+            saveData();
+            renderMealPlan();
+        }
+    }
+
+    // Edit snacks
+    function editSnacks() {
+        const snacks = prompt("Edit snacks (comma-separated):", mealPlan.snacks.join(', '));
+        if (snacks) {
+            mealPlan.snacks = snacks.split(',').map(s => s.trim());
             saveData();
             renderMealPlan();
         }
@@ -231,16 +283,25 @@
         }
     }
 
-    // Get meal suggestions
-    function getMealSuggestions() {
+    // Get meal suggestions from API
+    async function getMealSuggestions() {
         const suggestionsDiv = document.getElementById('suggestions');
-        suggestionsDiv.innerHTML = '<h3>Meal Suggestions</h3>';
-        // This is a simplified suggestion system. In a real app, this would be more complex.
-        const suggestion = meals[Math.floor(Math.random() * meals.length)];
-        if (suggestion) {
-            suggestionsDiv.innerHTML += `<p>How about ${suggestion.name}? It's ${suggestion.calories} calories.</p>`;
-        } else {
-            suggestionsDiv.innerHTML += '<p>No suggestions available. Try adding some dishes to the meal database.</p>';
+        suggestionsDiv.innerHTML = '<h3>Meal Suggestions</h3><p>Loading suggestions...</p>';
+        
+        try {
+            const response = await fetch('https://www.themealdb.com/api/json/v1/1/random.php');
+            const data = await response.json();
+            const meal = data.meals[0];
+            
+            suggestionsDiv.innerHTML = `
+                <h3>Meal Suggestions</h3>
+                <p>How about trying: ${meal.strMeal}</p>
+                <p>Category: ${meal.strCategory}</p>
+                <p>Area: ${meal.strArea}</p>
+                <img src="${meal.strMealThumb}" alt="${meal.strMeal}" style="width: 200px; height: auto;">
+            `;
+        } catch (error) {
+            suggestionsDiv.innerHTML = '<h3>Meal Suggestions</h3><p>Error fetching suggestions. Please try again later.</p>';
         }
     }
 
