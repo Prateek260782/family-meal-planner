@@ -63,6 +63,20 @@
             border-radius: 3px;
             transition: width 500ms ease-in-out;
         }
+        .delete-button {
+            background: #ff4d4d;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .meal-plan, .meal-database {
+            margin-top: 10px;
+        }
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -71,55 +85,177 @@
         
         <div class="section">
             <h2>Family Members</h2>
-            <div class="family-member">
-                <h3>John (You)</h3>
-                <p>Age: 35 | Diet: Weight Loss | Daily Calorie Target: 1800</p>
-                <div class="progress-bar">
-                    <span class="progress-bar-fill" style="width: 70%;">70%</span>
-                </div>
-            </div>
-            <div class="family-member">
-                <h3>Sarah (Wife)</h3>
-                <p>Age: 33 | Diet: Weight Loss | Daily Calorie Target: 1600</p>
-                <div class="progress-bar">
-                    <span class="progress-bar-fill" style="width: 60%;">60%</span>
-                </div>
-            </div>
-            <div class="family-member">
-                <h3>Tommy (Son)</h3>
-                <p>Age: 7 | Diet: Growth | Daily Calorie Target: 1400</p>
-                <div class="progress-bar">
-                    <span class="progress-bar-fill" style="width: 80%;">80%</span>
-                </div>
-            </div>
-            <div class="family-member">
-                <h3>Emma (Daughter)</h3>
-                <p>Age: 1 | Diet: Toddler | Daily Calorie Target: 900</p>
-                <div class="progress-bar">
-                    <span class="progress-bar-fill" style="width: 90%;">90%</span>
-                </div>
-            </div>
-            <button class="button">Add Family Member</button>
+            <div id="familyMembers"></div>
+            <button class="button" id="addFamilyMember">Add Family Member</button>
         </div>
         
         <div class="section">
             <h2>Meal Planning</h2>
-            <button class="button">Plan Breakfast</button>
-            <button class="button">Plan Lunch</button>
-            <button class="button">Plan Dinner</button>
-            <button class="button">Add Snack</button>
+            <button class="button" id="planBreakfast">Plan Breakfast</button>
+            <button class="button" id="planLunch">Plan Lunch</button>
+            <button class="button" id="planDinner">Plan Dinner</button>
+            <button class="button" id="addSnack">Add Snack</button>
+            <div id="mealPlan" class="meal-plan"></div>
         </div>
         
         <div class="section">
             <h2>Meal Database</h2>
-            <button class="button">View All Dishes</button>
-            <button class="button">Add New Dish</button>
+            <button class="button" id="viewAllDishes">View All Dishes</button>
+            <button class="button" id="addNewDish">Add New Dish</button>
+            <div id="mealDatabase" class="meal-database hidden"></div>
         </div>
         
         <div class="section">
             <h2>Suggestions</h2>
-            <button class="button">Get Meal Suggestions</button>
+            <button class="button" id="getMealSuggestions">Get Meal Suggestions</button>
+            <div id="suggestions"></div>
         </div>
     </div>
+
+    <script>
+    // Initialize data structure
+    let familyMembers = [];
+    let meals = [];
+    let mealPlan = {breakfast: '', lunch: '', dinner: '', snacks: []};
+
+    // Load data from localStorage
+    function loadData() {
+        const savedFamilyMembers = localStorage.getItem('familyMembers');
+        const savedMeals = localStorage.getItem('meals');
+        const savedMealPlan = localStorage.getItem('mealPlan');
+        
+        if (savedFamilyMembers) familyMembers = JSON.parse(savedFamilyMembers);
+        if (savedMeals) meals = JSON.parse(savedMeals);
+        if (savedMealPlan) mealPlan = JSON.parse(savedMealPlan);
+        
+        renderFamilyMembers();
+        renderMealPlan();
+    }
+
+    // Save data to localStorage
+    function saveData() {
+        localStorage.setItem('familyMembers', JSON.stringify(familyMembers));
+        localStorage.setItem('meals', JSON.stringify(meals));
+        localStorage.setItem('mealPlan', JSON.stringify(mealPlan));
+    }
+
+    // Render family members
+    function renderFamilyMembers() {
+        const familyMembersDiv = document.getElementById('familyMembers');
+        familyMembersDiv.innerHTML = '';
+        familyMembers.forEach((member, index) => {
+            const memberDiv = document.createElement('div');
+            memberDiv.className = 'family-member';
+            memberDiv.innerHTML = `
+                <h3>${member.name}</h3>
+                <p>Age: ${member.age} | Diet: ${member.diet} | Daily Calorie Target: ${member.calories}</p>
+                <div class="progress-bar">
+                    <span class="progress-bar-fill" style="width: ${member.progress}%;">${member.progress}%</span>
+                </div>
+                <button class="delete-button" onclick="deleteFamilyMember(${index})">Delete</button>
+            `;
+            familyMembersDiv.appendChild(memberDiv);
+        });
+    }
+
+    // Add family member
+    function addFamilyMember() {
+        const name = prompt("Enter family member's name:");
+        const age = prompt("Enter family member's age:");
+        const diet = prompt("Enter diet type:");
+        const calories = prompt("Enter daily calorie target:");
+
+        if (name && age && diet && calories) {
+            familyMembers.push({name, age, diet, calories, progress: 0});
+            saveData();
+            renderFamilyMembers();
+        }
+    }
+
+    // Delete family member
+    function deleteFamilyMember(index) {
+        familyMembers.splice(index, 1);
+        saveData();
+        renderFamilyMembers();
+    }
+
+    // Render meal plan
+    function renderMealPlan() {
+        const mealPlanDiv = document.getElementById('mealPlan');
+        mealPlanDiv.innerHTML = `
+            <p>Breakfast: ${mealPlan.breakfast}</p>
+            <p>Lunch: ${mealPlan.lunch}</p>
+            <p>Dinner: ${mealPlan.dinner}</p>
+            <p>Snacks: ${mealPlan.snacks.join(', ')}</p>
+        `;
+    }
+
+    // Plan meal
+    function planMeal(mealType) {
+        const meal = prompt(`Enter ${mealType}:`);
+        if (meal) {
+            mealPlan[mealType] = meal;
+            saveData();
+            renderMealPlan();
+        }
+    }
+
+    // Add snack
+    function addSnack() {
+        const snack = prompt("Enter snack:");
+        if (snack) {
+            mealPlan.snacks.push(snack);
+            saveData();
+            renderMealPlan();
+        }
+    }
+
+    // View all dishes
+    function viewAllDishes() {
+        const mealDatabaseDiv = document.getElementById('mealDatabase');
+        mealDatabaseDiv.innerHTML = '<h3>All Dishes</h3>';
+        meals.forEach(meal => {
+            mealDatabaseDiv.innerHTML += `<p>${meal.name} - ${meal.calories} calories</p>`;
+        });
+        mealDatabaseDiv.classList.remove('hidden');
+    }
+
+    // Add new dish
+    function addNewDish() {
+        const name = prompt("Enter dish name:");
+        const calories = prompt("Enter calorie count:");
+        if (name && calories) {
+            meals.push({name, calories});
+            saveData();
+            alert("Dish added successfully!");
+        }
+    }
+
+    // Get meal suggestions
+    function getMealSuggestions() {
+        const suggestionsDiv = document.getElementById('suggestions');
+        suggestionsDiv.innerHTML = '<h3>Meal Suggestions</h3>';
+        // This is a simplified suggestion system. In a real app, this would be more complex.
+        const suggestion = meals[Math.floor(Math.random() * meals.length)];
+        if (suggestion) {
+            suggestionsDiv.innerHTML += `<p>How about ${suggestion.name}? It's ${suggestion.calories} calories.</p>`;
+        } else {
+            suggestionsDiv.innerHTML += '<p>No suggestions available. Try adding some dishes to the meal database.</p>';
+        }
+    }
+
+    // Event listeners
+    document.getElementById('addFamilyMember').addEventListener('click', addFamilyMember);
+    document.getElementById('planBreakfast').addEventListener('click', () => planMeal('breakfast'));
+    document.getElementById('planLunch').addEventListener('click', () => planMeal('lunch'));
+    document.getElementById('planDinner').addEventListener('click', () => planMeal('dinner'));
+    document.getElementById('addSnack').addEventListener('click', addSnack);
+    document.getElementById('viewAllDishes').addEventListener('click', viewAllDishes);
+    document.getElementById('addNewDish').addEventListener('click', addNewDish);
+    document.getElementById('getMealSuggestions').addEventListener('click', getMealSuggestions);
+
+    // Load data on page load
+    loadData();
+    </script>
 </body>
 </html>
